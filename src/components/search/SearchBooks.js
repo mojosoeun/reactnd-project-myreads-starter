@@ -24,7 +24,7 @@ class SearchBooks extends Component {
                             books.map((book) => {
                                 return (
                                     <li key={book.id}>
-                                        <Book info={book} changeShelf={changeShelf}/>
+                                        <Book book={book} changeShelf={changeShelf}/>
                                     </li>
                                 )
                             })
