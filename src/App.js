@@ -8,9 +8,13 @@ import { Route } from 'react-router-dom'
 class BooksApp extends React.Component {
 
     state = {
-        myBooks: {},
-        searchBooks: []
-
+        searchBooks: [],
+        myBooks: {
+            currentlyReading: [],
+            wantToRead: [],
+            read: [],
+        },
+        books: []
     }
 
     componentDidMount() {
@@ -19,53 +23,64 @@ class BooksApp extends React.Component {
 
     getAllBook = () => {
         BooksAPI.getAll().then((books) => {
-            this.setState({ myBooks : books.groupBy('shelf') })
+            const currentlyReading = books.filter((book) => book.shelf === 'currentlyReading')
+            const wantToRead = books.filter((book) => book.shelf === 'wantToRead')
+            const read = books.filter((book) => book.shelf === 'read')
+            this.setState({ myBooks: {currentlyReading, wantToRead, read}, books})
         })
     }
 
     changeShelf = (book, shelf) => {
-        BooksAPI.update(book, shelf)
-        this.getAllBook();
-    }
 
-    searchBook = (query, maxResults) => {
-        BooksAPI.search(query, maxResults).then((searchBooks) => {
-            if (Array.isArray(searchBooks)) {
-                this.setState({ searchBooks })
-            } else {
-                this.setState({ searchBooks: [] })
+        BooksAPI.update(book, shelf).then((result) => {
+            const sourceShelf = book.shelf;
+            const targetShelf = shelf;
+            const copyBooks = this.state.myBooks;
+
+            if (targetShelf !== 'none') {
+                const source = this.state.myBooks[sourceShelf]
+
+                if (source) {
+                    source.splice(source.indexOf(book), 1)
+                    Object.assign(copyBooks, {[sourceShelf]: source})
+
+                }
+
+                const target = this.state.myBooks[targetShelf]
+
+                if (target) {
+                    target.push(book)
+                    Object.assign(copyBooks, {[targetShelf]: target})
+
+                }
+
+                book.shelf = shelf
             }
-        })
+
+            this.setState({ myBooks: copyBooks })
+
+
+        });
     }
-
-    getBookInfo = (bookId) => {
-        BooksAPI.get(bookId).then((book) => {
-
-        })
-    }
-
 
     render() {
         return (
           <div className="app">
               <Route exact path='/' render={() => (
-                  <ListBooks books={this.state.myBooks} changeShelf={this.changeShelf}/>
+                  <ListBooks
+                      books={this.state.myBooks}
+                      changeShelf={this.changeShelf}
+                  />
               )}/>
               <Route exact path='/search' render={() => (
-                  <SearchBooks books={this.state.searchBooks} searchBook={this.searchBook} changeShelf={this.changeShelf}/>
+                  <SearchBooks
+                      books={this.state.books}
+                      changeShelf={this.changeShelf}
+                  />
               )}/>
           </div>
         )
     }
-}
-
-Array.prototype.groupBy = function(prop) {
-    return this.reduce(function(groups, item) {
-        var val = item[prop];
-        groups[val] = groups[val] || [];
-        groups[val].push(item);
-        return groups;
-    }, {});
 }
 
 export default BooksApp
